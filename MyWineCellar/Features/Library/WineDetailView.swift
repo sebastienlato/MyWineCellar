@@ -4,8 +4,15 @@ import SwiftData
 import UIKit
 
 struct WineDetailView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     let wine: Wine
     @State private var isPresentingAddTasting = false
+    @State private var isPresentingEditWine = false
+    @State private var selectedTasting: Tasting?
+    @State private var tastingToDelete: Tasting?
+    @State private var isShowingDeleteTastingAlert = false
+    @State private var isShowingDeleteWineAlert = false
     @State private var photoSelection: PhotosPickerItem?
 
     var body: some View {
@@ -28,25 +35,72 @@ struct WineDetailView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            Button("Add Tasting") {
-                isPresentingAddTasting = true
-            }
-            .foregroundStyle(Theme.Colors.wine)
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button("Add Tasting") {
+                    isPresentingAddTasting = true
+                }
+                .foregroundStyle(Theme.Colors.wine)
 
-            PhotosPicker(selection: $photoSelection, matching: .images) {
-                Label("Edit Photo", systemImage: "photo")
+                Menu {
+                    Button("Edit Wine") {
+                        isPresentingEditWine = true
+                    }
+                    Button(role: .destructive) {
+                        isShowingDeleteWineAlert = true
+                    } label: {
+                        Text("Delete Wine")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
             }
 
-            Button("Remove Photo") {
-                removePhoto()
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                PhotosPicker(selection: $photoSelection, matching: .images) {
+                    Label("Edit Photo", systemImage: "photo")
+                }
+
+                Button("Remove Photo") {
+                    removePhoto()
+                }
+                .disabled(wine.photoFilename == nil)
             }
-            .disabled(wine.photoFilename == nil)
         }
         .sheet(isPresented: $isPresentingAddTasting) {
             NavigationStack {
                 AddTastingView(wine: wine)
             }
             .tint(Theme.Colors.wine)
+        }
+        .sheet(isPresented: $isPresentingEditWine) {
+            NavigationStack {
+                EditWineView(wine: wine)
+            }
+            .tint(Theme.Colors.wine)
+        }
+        .sheet(item: $selectedTasting) { tasting in
+            NavigationStack {
+                EditTastingView(tasting: tasting)
+            }
+            .tint(Theme.Colors.wine)
+        }
+        .alert("Delete Tasting?", isPresented: $isShowingDeleteTastingAlert, presenting: tastingToDelete) { tasting in
+            Button("Delete", role: .destructive) {
+                deleteTasting(tasting)
+            }
+            Button("Cancel", role: .cancel) {
+                tastingToDelete = nil
+            }
+        } message: { _ in
+            Text("This will remove the tasting from this wine.")
+        }
+        .alert("Delete Wine?", isPresented: $isShowingDeleteWineAlert) {
+            Button("Delete", role: .destructive) {
+                deleteWine()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This will delete the wine and all tastings.")
         }
         .onChange(of: photoSelection) { _, newValue in
             guard let newValue else { return }
@@ -149,6 +203,20 @@ struct WineDetailView: View {
                 VStack(spacing: Theme.Spacing.sm) {
                     ForEach(sortedTastings) { tasting in
                         TastingRow(tasting: tasting)
+                            .onTapGesture {
+                                selectedTasting = tasting
+                            }
+                            .contextMenu {
+                                Button("Edit") {
+                                    selectedTasting = tasting
+                                }
+                                Button(role: .destructive) {
+                                    tastingToDelete = tasting
+                                    isShowingDeleteTastingAlert = true
+                                } label: {
+                                    Text("Delete")
+                                }
+                            }
                     }
                 }
             }
@@ -175,6 +243,20 @@ struct WineDetailView: View {
         guard let filename = wine.photoFilename else { return }
         PhotoStore.removeImage(filename: filename)
         wine.photoFilename = nil
+    }
+
+    private func deleteTasting(_ tasting: Tasting) {
+        selectedTasting = nil
+        tastingToDelete = nil
+        modelContext.delete(tasting)
+    }
+
+    private func deleteWine() {
+        if let filename = wine.photoFilename {
+            PhotoStore.removeImage(filename: filename)
+        }
+        modelContext.delete(wine)
+        dismiss()
     }
 }
 
@@ -217,68 +299,6 @@ private struct TastingRow: View {
         .padding(Theme.Spacing.md)
         .background(Theme.Colors.charcoal)
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
-    }
-}
-
-private struct AddTastingView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
-    let wine: Wine
-
-    @State private var date = Date()
-    @State private var rating: Double = 4.0
-    @State private var pricePaid = ""
-    @State private var location = ""
-    @State private var memo = ""
-
-    var body: some View {
-        Form {
-            Section("Tasting") {
-                DatePicker("Date", selection: $date, displayedComponents: .date)
-                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                    Text("Rating: \(String(format: "%.1f", rating))")
-                        .foregroundStyle(Theme.Colors.textPrimary)
-                    Slider(value: $rating, in: 0...5, step: 0.5)
-                        .tint(Theme.Colors.wine)
-                }
-                TextField("Price Paid", text: $pricePaid)
-                    .keyboardType(.decimalPad)
-                TextField("Location", text: $location)
-            }
-
-            Section("Notes") {
-                TextField("Memo", text: $memo, axis: .vertical)
-                    .lineLimit(3, reservesSpace: true)
-            }
-        }
-        .scrollContentBackground(.hidden)
-        .background(Theme.Colors.charcoal)
-        .navigationTitle("Add Tasting")
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { saveTasting() }
-            }
-        }
-    }
-
-    private func saveTasting() {
-        let normalized = pricePaid.replacingOccurrences(of: ",", with: ".")
-        let priceValue = Double(normalized)
-
-        let tasting = Tasting(
-            date: date,
-            rating: rating,
-            pricePaid: priceValue,
-            location: location.isEmpty ? nil : location,
-            memo: memo.isEmpty ? nil : memo,
-            wine: wine
-        )
-        wine.tastings.append(tasting)
-        modelContext.insert(tasting)
-        dismiss()
     }
 }
 

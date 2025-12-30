@@ -79,3 +79,52 @@ Allow adding, viewing, changing, and removing a photo for each Wine.
 - Add “Edit Photo” + “Remove Photo” actions
 
 Stop after Phase 2.
+
+## Phase 3 — Edit & Delete (Codex)
+
+### Goal
+
+Allow editing and deleting Wines and Tastings safely, with a polished UX and no orphaned photo files.
+
+### Requirements
+
+- Edit Wine from WineDetail
+- Delete Wine from Library and from WineDetail
+- Add/Edit/Delete Tasting from WineDetail
+- Confirm destructive actions (alerts)
+- When deleting a Wine:
+  - delete its tastings (cascade already)
+  - delete its photo file from disk (PhotoStore) if present
+- Keep UI consistent with Theme and current layout
+- No new color assets or Theme token changes
+
+### Tasks
+
+1. Edit Wine
+
+- Add an Edit button in WineDetailView
+- Present EditWineView (sheet) reusing AddWine form fields
+- Save updates to SwiftData (name/producer/vintage/type/region/country/grape/notes/wishlist)
+- Keep existing photo unless user changes/removes it
+
+2. Tastings CRUD
+
+- In WineDetailView:
+  - Add Tasting (already exists) but ensure it is clean
+  - Tap a tasting row -> EditTastingView (sheet)
+  - Allow delete tasting (swipe actions or context menu)
+- Rating, date, memo, location, pricePaid editable
+
+3. Delete Wine
+
+- Library list:
+  - swipe to delete wine
+  - confirmation alert before delete
+- Wine detail:
+  - Delete button (toolbar/menu) with confirmation
+- Ensure deletion removes:
+  - wine record
+  - tastings (cascade)
+  - photo file on disk via PhotoStore.removeImage(filename:)
+
+Stop after Phase 3.

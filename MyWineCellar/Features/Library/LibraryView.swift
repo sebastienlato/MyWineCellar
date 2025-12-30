@@ -3,9 +3,12 @@ import SwiftData
 import UIKit
 
 struct LibraryView: View {
+    @Environment(\.modelContext) private var modelContext
     @Query private var wines: [Wine]
     @State private var filter: LibraryFilter = .all
     @State private var searchText = ""
+    @State private var wineToDelete: Wine?
+    @State private var isShowingDeleteAlert = false
 
     var body: some View {
         NavigationStack {
@@ -36,6 +39,14 @@ struct LibraryView: View {
                                     WineRow(wine: wine)
                                 }
                                 .listRowBackground(Theme.Colors.card)
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        wineToDelete = wine
+                                        isShowingDeleteAlert = true
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
                             }
                         }
                         .listStyle(.plain)
@@ -46,6 +57,16 @@ struct LibraryView: View {
             .navigationTitle("Library")
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always))
             .tint(Theme.Colors.wine)
+            .alert("Delete Wine?", isPresented: $isShowingDeleteAlert, presenting: wineToDelete) { wine in
+                Button("Delete", role: .destructive) {
+                    deleteWine(wine)
+                }
+                Button("Cancel", role: .cancel) {
+                    wineToDelete = nil
+                }
+            } message: { _ in
+                Text("This will delete the wine and all tastings.")
+            }
         }
     }
 
@@ -72,6 +93,14 @@ struct LibraryView: View {
             || (wine.region?.lowercased().contains(query) ?? false)
         }
         .sorted { $0.name < $1.name }
+    }
+
+    private func deleteWine(_ wine: Wine) {
+        if let filename = wine.photoFilename {
+            PhotoStore.removeImage(filename: filename)
+        }
+        modelContext.delete(wine)
+        wineToDelete = nil
     }
 }
 
