@@ -1,9 +1,12 @@
+import PhotosUI
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct WineDetailView: View {
     let wine: Wine
     @State private var isPresentingAddTasting = false
+    @State private var photoSelection: PhotosPickerItem?
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -29,6 +32,15 @@ struct WineDetailView: View {
                 isPresentingAddTasting = true
             }
             .foregroundStyle(Theme.Colors.wine)
+
+            PhotosPicker(selection: $photoSelection, matching: .images) {
+                Label("Edit Photo", systemImage: "photo")
+            }
+
+            Button("Remove Photo") {
+                removePhoto()
+            }
+            .disabled(wine.photoFilename == nil)
         }
         .sheet(isPresented: $isPresentingAddTasting) {
             NavigationStack {
@@ -36,25 +48,21 @@ struct WineDetailView: View {
             }
             .tint(Theme.Colors.wine)
         }
+        .onChange(of: photoSelection) { _, newValue in
+            guard let newValue else { return }
+            Task {
+                if let data = try? await newValue.loadTransferable(type: Data.self) {
+                    await MainActor.run {
+                        updatePhoto(with: data)
+                    }
+                }
+            }
+        }
     }
 
     private var header: some View {
         ZStack(alignment: .bottomLeading) {
-            Image("HeroBlur")
-                .resizable()
-                .scaledToFill()
-                .frame(height: 200)
-                .clipped()
-                .overlay(
-                    LinearGradient(
-                        colors: [
-                            Theme.Colors.charcoal.opacity(0.1),
-                            Theme.Colors.charcoal
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+            headerImage
 
             VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                 Text(wine.name)
@@ -67,6 +75,34 @@ struct WineDetailView: View {
             .padding(Theme.Spacing.lg)
         }
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
+    }
+
+    private var headerImage: some View {
+        Group {
+            if let filename = wine.photoFilename, let image = PhotoStore.loadImage(filename: filename) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(height: 220)
+                    .clipped()
+            } else {
+                Image("HeroBlur")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(height: 200)
+                    .clipped()
+            }
+        }
+        .overlay(
+            LinearGradient(
+                colors: [
+                    Theme.Colors.charcoal.opacity(0.1),
+                    Theme.Colors.charcoal
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
     }
 
     private var metadataSection: some View {
@@ -124,6 +160,21 @@ struct WineDetailView: View {
 
     private var sortedTastings: [Tasting] {
         wine.tastings.sorted { $0.date > $1.date }
+    }
+
+    private func updatePhoto(with data: Data) {
+        if let existing = wine.photoFilename {
+            PhotoStore.removeImage(filename: existing)
+        }
+        if let filename = PhotoStore.saveImageData(data) {
+            wine.photoFilename = filename
+        }
+    }
+
+    private func removePhoto() {
+        guard let filename = wine.photoFilename else { return }
+        PhotoStore.removeImage(filename: filename)
+        wine.photoFilename = nil
     }
 }
 

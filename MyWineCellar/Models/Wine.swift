@@ -19,6 +19,7 @@ final class Wine {
 
     var notes: String?
     var isWishlist: Bool
+    var photoFilename: String?
     var createdAt: Date
 
     @Relationship(inverse: \Tasting.wine)
@@ -35,6 +36,7 @@ final class Wine {
         type: WineType = .red,
         notes: String? = nil,
         isWishlist: Bool = false,
+        photoFilename: String? = nil,
         createdAt: Date = .now,
         tastings: [Tasting] = []
     ) {
@@ -48,6 +50,7 @@ final class Wine {
         self.typeRaw = type.rawValue
         self.notes = notes
         self.isWishlist = isWishlist
+        self.photoFilename = photoFilename
         self.createdAt = createdAt
         self.tastings = tastings
     }

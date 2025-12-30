@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct LibraryView: View {
     @Query private var wines: [Wine]
@@ -96,6 +97,8 @@ private struct WineRow: View {
 
     var body: some View {
         HStack(spacing: Theme.Spacing.md) {
+            thumbnail
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(wine.name)
                     .font(.headline)
@@ -125,6 +128,25 @@ private struct WineRow: View {
             }
         }
         .padding(.vertical, Theme.Spacing.sm)
+    }
+
+    private var thumbnail: some View {
+        Group {
+            if let filename = wine.photoFilename, let image = PhotoStore.loadImage(filename: filename) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: "wineglass.fill")
+                    .font(.title3)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Theme.Colors.charcoal)
+            }
+        }
+        .frame(width: 56, height: 56)
+        .background(Theme.Colors.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.chip))
     }
 
     private var subtitle: String {

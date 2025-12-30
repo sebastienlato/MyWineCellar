@@ -1,5 +1,7 @@
+import PhotosUI
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct AddWineView: View {
     @Environment(\.modelContext) private var modelContext
@@ -13,6 +15,8 @@ struct AddWineView: View {
     @State private var notes = ""
     @State private var isWishlist = false
     @State private var createdWine: Wine?
+    @State private var photoSelection: PhotosPickerItem?
+    @State private var photoData: Data?
 
     var body: some View {
         NavigationStack {
@@ -35,6 +39,30 @@ struct AddWineView: View {
                     TextField("Grape", text: $grape)
                 }
 
+                Section("Photo") {
+                    PhotosPicker(selection: $photoSelection, matching: .images) {
+                        HStack {
+                            if let photoData, let image = UIImage(data: photoData) {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 56, height: 56)
+                                    .clipped()
+                                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.chip))
+                            } else {
+                                Image(systemName: "camera.fill")
+                                    .foregroundStyle(Theme.Colors.textSecondary)
+                                    .frame(width: 56, height: 56)
+                                    .background(Theme.Colors.card)
+                                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.chip))
+                            }
+
+                            Text(photoData == nil ? "Add Photo" : "Change Photo")
+                                .foregroundStyle(Theme.Colors.textPrimary)
+                        }
+                    }
+                }
+
                 Section("Notes") {
                     Toggle("Wishlist", isOn: $isWishlist)
                     TextField("Notes", text: $notes, axis: .vertical)
@@ -54,10 +82,24 @@ struct AddWineView: View {
                 WineDetailView(wine: wine)
             }
             .tint(Theme.Colors.wine)
+            .onChange(of: photoSelection) { _, newValue in
+                guard let newValue else {
+                    photoData = nil
+                    return
+                }
+                Task {
+                    if let data = try? await newValue.loadTransferable(type: Data.self) {
+                        await MainActor.run {
+                            photoData = data
+                        }
+                    }
+                }
+            }
         }
     }
 
     private func saveWine() {
+        let filename = photoData.flatMap { PhotoStore.saveImageData($0) }
         let wine = Wine(
             name: name,
             producer: producer,
@@ -67,7 +109,8 @@ struct AddWineView: View {
             grape: grape.isEmpty ? nil : grape,
             type: type,
             notes: notes.isEmpty ? nil : notes,
-            isWishlist: isWishlist
+            isWishlist: isWishlist,
+            photoFilename: filename
         )
         modelContext.insert(wine)
         createdWine = wine
@@ -84,6 +127,8 @@ struct AddWineView: View {
         grape = ""
         notes = ""
         isWishlist = false
+        photoSelection = nil
+        photoData = nil
     }
 }
 
