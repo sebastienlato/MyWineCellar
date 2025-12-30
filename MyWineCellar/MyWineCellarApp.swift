@@ -12,7 +12,8 @@ import SwiftData
 struct MyWineCellarApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
-            Item.self,
+            Wine.self,
+            Tasting.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
