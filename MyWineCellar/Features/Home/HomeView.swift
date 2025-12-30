@@ -76,14 +76,18 @@ struct HomeView: View {
     }
 
     private var averageRatingText: String {
-        guard !tastings.isEmpty else { return "No ratings yet" }
-        let average = tastings.map(\.rating).reduce(0, +) / Double(tastings.count)
+        guard !validTastings.isEmpty else { return "—" }
+        let average = validTastings.map(\.rating).reduce(0, +) / Double(validTastings.count)
         return String(format: "%.1f avg", average)
     }
 
     private func recentCount(days: Int) -> Int {
         let cutoff = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
-        return tastings.filter { $0.date >= cutoff }.count
+        return validTastings.filter { $0.date >= cutoff }.count
+    }
+
+    private var validTastings: [Tasting] {
+        tastings.filter { $0.wine != nil }
     }
 }
 
