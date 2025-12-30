@@ -26,9 +26,9 @@ struct AppShellView: View {
             .tabItem { Label("Add", systemImage: "plus.circle.fill") }
 
             NavigationStack {
-                SettingsView()
+                StatsView()
             }
-            .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+            .tabItem { Label("Stats", systemImage: "chart.bar.fill") }
         }
         .tint(Theme.Colors.wine)
     }

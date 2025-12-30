@@ -22,7 +22,7 @@ final class Wine {
     var photoFilename: String?
     var createdAt: Date
 
-    @Relationship(inverse: \Tasting.wine)
+    @Relationship(deleteRule: .cascade, inverse: \Tasting.wine)
     var tastings: [Tasting]
 
     init(

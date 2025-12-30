@@ -128,3 +128,54 @@ Allow editing and deleting Wines and Tastings safely, with a polished UX and no 
   - photo file on disk via PhotoStore.removeImage(filename:)
 
 Stop after Phase 3.
+
+## Phase 4 — Stats Dashboard (Codex)
+
+### Goal
+
+Add a Stats dashboard that replaces the Settings tab and provides insight into ratings, regions, and trends.
+
+### Navigation
+
+- Replace the existing Settings tab with a Stats tab.
+- Final tab layout:
+  Home | Library | Add | Stats
+
+### Requirements
+
+- No Settings screen in this phase
+- Use existing Theme tokens and dark UI
+- No third-party dependencies
+- Stats computed from SwiftData (Wine + Tasting)
+
+### Metrics to include
+
+1. Overview cards
+
+- Total wines
+- Total tastings
+- Wishlist count
+- Average rating (all tastings)
+
+2. Ratings by wine type
+
+- Group by WineType
+- Show average rating + count per type
+
+3. Ratings by region (Top 10)
+
+- Group by Wine.region (fallback “Unknown”)
+- Show avg rating + tasting count
+
+4. Trends (last 90 days)
+
+- Group tastings by week
+- Show average rating per period
+- Lightweight visual (bars or simple line style)
+
+### UX
+
+- Empty state when no tastings exist
+- Fast and readable; avoid heavy computation
+
+Stop after Phase 4.
