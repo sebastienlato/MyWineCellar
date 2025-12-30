@@ -3,9 +3,9 @@ import SwiftData
 import UIKit
 
 struct LibraryView: View {
+    @EnvironmentObject private var appState: AppState
     @Environment(\.modelContext) private var modelContext
     @Query private var wines: [Wine]
-    @State private var filter: LibraryFilter = .all
     @State private var searchText = ""
     @State private var wineToDelete: Wine?
     @State private var isShowingDeleteAlert = false
@@ -16,7 +16,7 @@ struct LibraryView: View {
                 Theme.Colors.charcoal.ignoresSafeArea()
 
                 VStack(spacing: Theme.Spacing.md) {
-                    Picker("Filter", selection: $filter) {
+                    Picker("Filter", selection: filter) {
                         ForEach(LibraryFilter.allCases, id: \.self) { option in
                             Text(option.title).tag(option)
                         }
@@ -72,7 +72,7 @@ struct LibraryView: View {
 
     private var filteredWines: [Wine] {
         let base = wines.filter { wine in
-            switch filter {
+            switch filter.wrappedValue {
             case .all:
                 return true
             case .cellar:
@@ -102,22 +102,12 @@ struct LibraryView: View {
         modelContext.delete(wine)
         wineToDelete = nil
     }
-}
 
-private enum LibraryFilter: CaseIterable {
-    case all
-    case cellar
-    case wishlist
-
-    var title: String {
-        switch self {
-        case .all:
-            return "All"
-        case .cellar:
-            return "Cellar"
-        case .wishlist:
-            return "Wishlist"
-        }
+    private var filter: Binding<LibraryFilter> {
+        Binding(
+            get: { appState.libraryFilter },
+            set: { appState.libraryFilter = $0 }
+        )
     }
 }
 
@@ -190,4 +180,5 @@ private struct WineRow: View {
 #Preview {
     LibraryView()
         .modelContainer(SampleData.previewContainer())
+        .environmentObject(AppState())
 }

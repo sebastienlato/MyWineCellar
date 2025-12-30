@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct HomeView: View {
+    @EnvironmentObject private var appState: AppState
     @Query private var wines: [Wine]
     @Query private var tastings: [Tasting]
 
@@ -38,16 +39,18 @@ struct HomeView: View {
                 }
 
                 VStack(spacing: Theme.Spacing.md) {
-                    StatCard(
-                        title: "Recent",
-                        subtitle: "7d: \(recentCount7) • 30d: \(recentCount30)",
-                        systemImage: "clock.fill"
-                    )
-                    StatCard(
-                        title: "Wishlist",
-                        subtitle: "\(wishlistCount) wines",
-                        systemImage: "heart.fill"
-                    )
+                    MostRecentWineCard(wine: mostRecentWine)
+                    Button {
+                        appState.libraryFilter = .wishlist
+                        appState.selectedTab = .library
+                    } label: {
+                        StatCard(
+                            title: "Wishlist",
+                            subtitle: "\(wishlistCount) wines",
+                            systemImage: "heart.fill"
+                        )
+                    }
+                    .buttonStyle(.plain)
                     StatCard(
                         title: "Avg Rating",
                         subtitle: averageRatingText,
@@ -89,6 +92,128 @@ struct HomeView: View {
     private var validTastings: [Tasting] {
         tastings.filter { $0.wine != nil }
     }
+
+    private var mostRecentWine: Wine? {
+        wines.max(by: { $0.createdAt < $1.createdAt })
+    }
+}
+
+private struct MostRecentWineCard: View {
+    let wine: Wine?
+
+    var body: some View {
+        Group {
+            if let wine {
+                NavigationLink {
+                    WineDetailView(wine: wine)
+                } label: {
+                    content(for: wine)
+                }
+                .buttonStyle(.plain)
+            } else {
+                emptyState
+            }
+        }
+    }
+
+    private func content(for wine: Wine) -> some View {
+        HStack(spacing: Theme.Spacing.md) {
+            WineThumb(photoFilename: wine.photoFilename)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Most Recent")
+                    .font(.caption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+
+                Text(wine.name)
+                    .font(.headline)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .lineLimit(1)
+
+                Text(regionLine(for: wine))
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+
+                Text(relativeDate(wine.createdAt))
+                    .font(.caption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
+
+            Spacer()
+        }
+        .padding(Theme.Spacing.lg)
+        .background(Theme.Colors.card)
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.card)
+                .stroke(Theme.Colors.divider.opacity(0.8), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
+    }
+
+    private var emptyState: some View {
+        HStack(spacing: Theme.Spacing.md) {
+            Image(systemName: "clock.fill")
+                .font(.title3)
+                .foregroundStyle(Theme.Colors.textSecondary)
+                .frame(width: 44, height: 44)
+                .background(Theme.Colors.card)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.chip))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Most Recent")
+                    .font(.headline)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                Text("Add your first wine to see it here")
+                    .font(.subheadline)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+            }
+
+            Spacer()
+        }
+        .padding(Theme.Spacing.lg)
+        .background(Theme.Colors.card)
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.card)
+                .stroke(Theme.Colors.divider.opacity(0.8), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
+    }
+
+    private func regionLine(for wine: Wine) -> String {
+        let region = wine.region?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let country = wine.country?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let parts = [region, country].filter { !$0.isEmpty }
+        return parts.isEmpty ? "Unknown region" : parts.joined(separator: ", ")
+    }
+
+    private func relativeDate(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+private struct WineThumb: View {
+    let photoFilename: String?
+
+    var body: some View {
+        Group {
+            if let photoFilename, let image = PhotoStore.loadImage(filename: photoFilename) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: "wineglass.fill")
+                    .font(.title3)
+                    .foregroundStyle(Theme.Colors.textSecondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Theme.Colors.charcoal)
+            }
+        }
+        .frame(width: 56, height: 56)
+        .background(Theme.Colors.card)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.chip))
+    }
 }
 
 private struct StatCard: View {
@@ -127,4 +252,5 @@ private struct StatCard: View {
 #Preview {
     HomeView()
         .modelContainer(SampleData.previewContainer())
+        .environmentObject(AppState())
 }
